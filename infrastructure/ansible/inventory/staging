@@ -1,0 +1,95 @@
+# Ansible inventory file for the staging environment
+# This file defines the target hosts and their configurations for the supplement reminder application deployment
+
+# Web Servers
+[web_servers]
+staging-web1.supplement-reminder.com ansible_host=10.0.1.10
+staging-web2.supplement-reminder.com ansible_host=10.0.1.11
+
+# Application Servers
+[app_servers]
+staging-app1.supplement-reminder.com ansible_host=10.0.2.10
+staging-app2.supplement-reminder.com ansible_host=10.0.2.11
+
+# Database Servers
+[db_servers]
+staging-db1.supplement-reminder.com ansible_host=10.0.3.10
+
+# Cache Servers
+[cache_servers]
+staging-cache1.supplement-reminder.com ansible_host=10.0.4.10
+
+# Load Balancers
+[load_balancers]
+staging-lb1.supplement-reminder.com ansible_host=10.0.0.10
+
+# Monitoring Servers
+[monitoring]
+staging-monitor1.supplement-reminder.com ansible_host=10.0.5.10
+
+# Group variables
+[web_servers:vars]
+http_port=80
+https_port=443
+nginx_worker_processes=auto
+nginx_worker_connections=1024
+
+[app_servers:vars]
+node_env=staging
+pm2_instances=2
+
+[db_servers:vars]
+postgres_port=5432
+postgres_max_connections=200
+postgres_shared_buffers=1GB
+
+[cache_servers:vars]
+redis_port=6379
+redis_maxmemory=1gb
+redis_maxmemory_policy=allkeys-lru
+
+[load_balancers:vars]
+haproxy_max_connections=4000
+haproxy_timeout_connect=5s
+haproxy_timeout_client=30s
+haproxy_timeout_server=30s
+
+[monitoring:vars]
+prometheus_retention_time=15d
+grafana_admin_password="{{ vault_grafana_admin_password }}"
+
+# Common variables for all hosts
+[all:vars]
+ansible_user=ec2-user
+ansible_ssh_private_key_file=~/.ssh/staging_key.pem
+ansible_become=yes
+ansible_become_method=sudo
+env=staging
+domain=staging.supplement-reminder.com
+timezone=UTC
+ntp_servers=["0.pool.ntp.org", "1.pool.ntp.org", "2.pool.ntp.org", "3.pool.ntp.org"]
+dns_nameservers=["8.8.8.8", "8.8.4.4"]
+backup_retention_days=7
+log_retention_days=30
+
+# Security variables
+[all:vars]
+firewall_allowed_tcp_ports=[22, 80, 443]
+fail2ban_enabled=true
+selinux_state=enforcing
+
+# Application-specific variables
+[all:vars]
+app_name=supplement-reminder
+app_version=1.2.3
+git_repo=https://github.com/example/supplement-reminder.git
+git_version=main
+
+# This inventory file defines the staging environment for the supplement reminder application
+# It includes groups for web servers, application servers, database servers, cache servers, load balancers, and monitoring servers
+# The staging environment is designed to closely mirror the production setup while optimizing resource usage
+# Make sure to update the host names, IP addresses, and variables according to your actual staging infrastructure
+# The ansible_user and ansible_ssh_private_key_file variables should be set to the appropriate values for your staging environment
+# Consider using Ansible Vault for sensitive information like passwords and API keys
+# For cloud-based environments, consider using a dynamic inventory script to automatically update the inventory
+# Regularly review and update this inventory file to ensure it reflects the current state of your staging environment

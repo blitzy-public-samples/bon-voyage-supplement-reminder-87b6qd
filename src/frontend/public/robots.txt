@@ -1,0 +1,48 @@
+# This file provides instructions for web crawlers and search engine bots
+# on how to crawl and index our website.
+
+# Global rules for all web crawlers
+User-agent: *
+
+# Allow crawling of the root directory and its contents
+Allow: /
+
+# Prevent crawling of API endpoints to reduce server load and protect sensitive data
+Disallow: /api/
+
+# Prevent crawling of any potential admin pages for security reasons
+Disallow: /admin/
+
+# Prevent crawling of user-specific pages or data
+Disallow: /user/
+Disallow: /profile/
+
+# Allow crawling of static assets
+Allow: /static/
+
+# Allow crawling of public images
+Allow: /images/
+
+# Prevent crawling of any temporary or development-related paths
+Disallow: /temp/
+Disallow: /dev/
+
+# Prevent crawling of any error pages
+Disallow: /error/
+
+# Prevent crawling of search results to avoid duplicate content issues
+Disallow: /search/
+
+# Crawl-delay directive to rate limit requests (in seconds)
+# Adjust as needed based on server capacity
+Crawl-delay: 10
+
+# Point crawlers to the sitemap file for efficient crawling
+# Note: Update this URL to match the actual domain of the supplement reminder website
+Sitemap: https://www.supplementreminder.com/sitemap.xml
+
+# Additional notes:
+# 1. Regularly review and update this file as the website structure changes.
+# 2. Use Google Search Console and other webmaster tools to monitor crawl behavior.
+# 3. Ensure the sitemap.xml file is always up to date and properly formatted.
+# 4. Consider using separate rules for different user agents if specific behavior is required.

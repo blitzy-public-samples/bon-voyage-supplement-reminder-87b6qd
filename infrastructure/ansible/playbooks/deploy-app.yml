@@ -1,0 +1,120 @@
+---
+# Ansible playbook for deploying the supplement reminder application to configured servers
+# Requirements addressed:
+# - Application Deployment (9. INFRASTRUCTURE/9.4 ORCHESTRATION)
+# - Continuous Deployment (9. INFRASTRUCTURE/9.5 CI/CD PIPELINE)
+
+- name: Deploy supplement reminder application
+  hosts: all
+  become: true
+  vars:
+    app_name: supplement-reminder
+    docker_image_backend: "{{ ecr_repository_url }}/backend:{{ app_version }}"
+    docker_image_frontend: "{{ ecr_repository_url }}/frontend:{{ app_version }}"
+    app_env: "{{ lookup('env', 'APP_ENV') | default('production', true) }}"
+    deployment_log: "/var/log/{{ app_name }}_deployment.log"
+
+  pre_tasks:
+    - name: Ensure required variables are set
+      assert:
+        that:
+          - ecr_repository_url is defined
+          - app_version is defined
+          - aws_region is defined
+        fail_msg: "Required variables are not set. Please ensure ecr_repository_url, app_version, and aws_region are defined."
+
+  tasks:
+    - name: Log deployment start
+      ansible.builtin.shell: "echo 'Deployment started at $(date)' >> {{ deployment_log }}"
+
+    - name: Log into Amazon ECR
+      ansible.builtin.shell: "$(aws ecr get-login-password --region {{ aws_region }} | docker login --username AWS --password-stdin {{ ecr_repository_url }})"
+      args:
+        executable: /bin/bash
+
+    - name: Pull latest Docker images
+      community.docker.docker_image:
+        name: "{{ item }}"
+        source: pull
+        force_source: true
+      loop:
+        - "{{ docker_image_backend }}"
+        - "{{ docker_image_frontend }}"
+
+    - name: Ensure application directory exists
+      ansible.builtin.file:
+        path: "/opt/{{ app_name }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose.yml to server
+      ansible.builtin.template:
+        src: ../../docker-compose.yml.j2
+        dest: "/opt/{{ app_name }}/docker-compose.yml"
+        mode: '0644'
+
+    - name: Copy .env file to server
+      ansible.builtin.template:
+        src: "../../.env.{{ app_env }}.j2"
+        dest: "/opt/{{ app_name }}/.env"
+        mode: '0600'
+
+    - name: Deploy application using docker-compose
+      community.docker.docker_compose:
+        project_src: "/opt/{{ app_name }}"
+        files:
+          - docker-compose.yml
+        state: present
+        pull: true
+
+    - name: Run database migrations
+      community.docker.docker_container:
+        name: db-migrate
+        image: "{{ docker_image_backend }}"
+        command: npm run migrate
+        env_file: "/opt/{{ app_name }}/.env"
+        detach: false
+        cleanup: true
+      register: migration_result
+
+    - name: Log migration result
+      ansible.builtin.shell: "echo 'Database migration result: {{ migration_result.stdout }}' >> {{ deployment_log }}"
+
+    - name: Verify application health
+      ansible.builtin.uri:
+        url: "http://localhost/health"
+        return_content: true
+      register: health_check
+      until: health_check.status == 200
+      retries: 10
+      delay: 15
+
+    - name: Log deployment status
+      ansible.builtin.shell: "echo 'Deployment completed successfully at $(date)' >> {{ deployment_log }}"
+
+  handlers:
+    - name: Restart application
+      community.docker.docker_compose:
+        project_src: "/opt/{{ app_name }}"
+        files:
+          - docker-compose.yml
+        restarted: true
+
+  vars:
+    # These variables should be set in the inventory file or passed during playbook execution
+    ecr_repository_url: "{{ lookup('env', 'ECR_REPOSITORY_URL') }}"
+    app_version: "{{ lookup('env', 'APP_VERSION') | default('latest', true) }}"
+    aws_region: "{{ lookup('env', 'AWS_REGION') | default('us-west-2', true) }}"
+
+  tags:
+    - deploy
+    - application
+    - docker
+
+# This playbook deploys the supplement reminder application using Docker and docker-compose
+# It pulls the latest Docker images from Amazon ECR, copies necessary configuration files,
+# and starts the application containers
+# Database migrations are run after deployment to ensure schema consistency
+# A health check is performed to verify successful deployment
+# Make sure to set the required variables (ecr_repository_url, app_version, aws_region) before running this playbook
+# This playbook should be run after setup-servers.yml to ensure proper server configuration

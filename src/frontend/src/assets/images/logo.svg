@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <title>Smart Reminder Logo</title>
+  <desc>Logo for Smart Reminder application featuring SR text on a pill-shaped background</desc>
+  
+  <!-- Logo Background -->
+  <rect width="100%" height="100%" fill="#FFA500" />
+  
+  <!-- Pill Shape -->
+  <path d="M30 15h140q15 0 15 15v15q0 15-15 15H30q-15 0-15-15V30q0-15 15-15z" fill="#000080" />
+  
+  <!-- SR Text -->
+  <text x="50%" y="42" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="bold" fill="#89CFF0" text-anchor="middle" dominant-baseline="middle">SR</text>
+</svg>

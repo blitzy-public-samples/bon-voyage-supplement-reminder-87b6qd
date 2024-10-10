@@ -1,0 +1,63 @@
+# Kubernetes Ingress configuration for routing external traffic to the supplement reminder application services
+# Requirements addressed:
+# - Containerization and Orchestration (9. INFRASTRUCTURE/9.3 CONTAINERIZATION, 9.4 ORCHESTRATION)
+# - Security Considerations (8. SECURITY CONSIDERATIONS/8.3.1 Network Security)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: supplement-reminder-ingress
+  namespace: supplement-reminder
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://supplement-reminder.example.com"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    kubernetes.io/change-cause: "Updated ingress configuration for supplement reminder application with enhanced security and performance settings"
+spec:
+  tls:
+  - hosts:
+    - supplement-reminder.example.com
+    secretName: supplement-reminder-tls
+  rules:
+  - host: supplement-reminder.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port: 
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 80
+
+# Additional considerations and best practices:
+# 1. Ensure DNS is configured to point the domain to the Ingress controller's external IP or load balancer
+# 2. Monitor and adjust resource allocation for the Ingress controller based on traffic patterns
+# 3. Regularly update TLS certificates and Ingress controller version
+# 4. Implement rate limiting rules to prevent abuse:
+#    nginx.ingress.kubernetes.io/limit-rps: "10"
+#    nginx.ingress.kubernetes.io/limit-connections: "5"
+# 5. Set up monitoring and alerting for Ingress controller health and performance
+# 6. Consider implementing network policies to restrict traffic between pods
+# 7. Use external-dns for automatic DNS management if applicable
+# 8. Implement proper logging and tracing for the Ingress controller
+# 9. Consider using a Web Application Firewall (WAF) for additional security
+# 10. Regularly audit and update the Ingress configuration as part of your security practices

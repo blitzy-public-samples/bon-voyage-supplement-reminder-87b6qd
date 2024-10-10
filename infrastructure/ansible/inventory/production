@@ -1,0 +1,106 @@
+# Ansible inventory file for the production environment of the supplement reminder application
+# This file defines the target hosts and their configurations for Ansible playbooks
+
+# Web Servers Group
+[web_servers]
+prod-web1.supplement-reminder.com ansible_host=10.0.1.10
+prod-web2.supplement-reminder.com ansible_host=10.0.1.11
+prod-web3.supplement-reminder.com ansible_host=10.0.1.12
+
+# Database Servers Group
+[db_servers]
+prod-db1.supplement-reminder.com ansible_host=10.0.2.10
+prod-db2.supplement-reminder.com ansible_host=10.0.2.11
+
+# Cache Servers Group
+[cache_servers]
+prod-cache1.supplement-reminder.com ansible_host=10.0.3.10
+prod-cache2.supplement-reminder.com ansible_host=10.0.3.11
+
+# Load Balancers Group
+[load_balancers]
+prod-lb1.supplement-reminder.com ansible_host=10.0.4.10
+
+# Monitoring Group
+[monitoring]
+prod-monitor1.supplement-reminder.com ansible_host=10.0.5.10
+
+# Group Variables for Web Servers
+[web_servers:vars]
+http_port=80
+https_port=443
+app_directory=/var/www/supplement-reminder
+
+# Group Variables for Database Servers
+[db_servers:vars]
+postgres_port=5432
+postgres_data_dir=/var/lib/postgresql/data
+postgres_version=13
+
+# Group Variables for Cache Servers
+[cache_servers:vars]
+redis_port=6379
+redis_config_file=/etc/redis/redis.conf
+
+# Group Variables for Load Balancers
+[load_balancers:vars]
+nginx_config_file=/etc/nginx/nginx.conf
+
+# Group Variables for Monitoring
+[monitoring:vars]
+prometheus_port=9090
+grafana_port=3000
+
+# Variables for all hosts
+[all:vars]
+ansible_user=ec2-user
+ansible_ssh_private_key_file=~/.ssh/production_key.pem
+ansible_become=yes
+ansible_become_method=sudo
+env=production
+domain=supplement-reminder.com
+timezone=UTC
+docker_version=20.10.14
+node_version=14.x
+nginx_version=1.18.0
+app_name=supplement-reminder
+app_env=production
+aws_region=us-west-2
+
+# ECR repository URL and app version (to be set before running deploy-app.yml)
+ecr_repository_url=123456789012.dkr.ecr.us-west-2.amazonaws.com/supplement-reminder
+app_version=1.2.3
+
+# Security groups
+security_group_web=sg-0123456789abcdef0
+security_group_db=sg-0123456789abcdef1
+security_group_cache=sg-0123456789abcdef2
+security_group_lb=sg-0123456789abcdef3
+security_group_monitor=sg-0123456789abcdef4
+
+# Backup configuration
+backup_retention_days=30
+backup_s3_bucket=supplement-reminder-backups
+
+# Logging configuration
+cloudwatch_log_group=/supplement-reminder/production
+
+# This inventory file defines the production environment for the supplement reminder application.
+# It includes groups for web servers, database servers, cache servers, load balancers, and monitoring.
+# The production environment has multiple servers for each group to ensure high availability and load balancing.
+# Make sure to update the host names, IP addresses, and variables according to your actual production setup.
+# The ansible_user and ansible_ssh_private_key_file variables should be set to the appropriate values for your production infrastructure.
+# You may need to add or modify groups and variables based on your specific deployment requirements.
+# Consider using a dynamic inventory script for cloud-based environments to automatically update the inventory.
+
+# Additional notes:
+# 1. Ensure that all IP addresses are correct and match your actual infrastructure.
+# 2. Verify that the specified ports are correct and match your application's configuration.
+# 3. Double-check that the ECR repository URL is correct before deploying.
+# 4. Update the app_version whenever a new version is ready for deployment.
+# 5. Regularly audit this file against your actual server setup to ensure consistency.
+# 6. Use ansible-vault to encrypt sensitive information if needed.
+# 7. Consider using separate inventory files for different environments (e.g., staging, testing).
+
+# Remember to keep this inventory file updated as your infrastructure changes.
+# Regular audits of this file against your actual server setup are recommended.

@@ -1,0 +1,139 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  CI: true
+  NODE_VERSION: '16'
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: src/frontend
+        run: npm run build
+
+      - name: Test frontend
+        working-directory: src/frontend
+        run: npm test -- --coverage
+
+      - name: Lint frontend
+        working-directory: src/frontend
+        run: npm run lint
+
+      - name: Type check frontend
+        working-directory: src/frontend
+        run: npm run type-check
+
+      - name: Install backend dependencies
+        working-directory: src/backend
+        run: npm ci
+
+      - name: Test backend
+        working-directory: src/backend
+        run: npm test -- --coverage
+
+      - name: Lint backend
+        working-directory: src/backend
+        run: npm run lint
+
+      - name: Type check backend
+        working-directory: src/backend
+        run: npm run type-check
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-coverage
+          path: src/frontend/coverage
+
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: backend-coverage
+          path: src/backend/coverage
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: test
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push backend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: src/backend
+          file: infrastructure/Dockerfile.backend
+          push: false
+          tags: app-backend:${{ github.sha }}
+
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: src/frontend
+          file: infrastructure/Dockerfile.frontend
+          push: false
+          tags: app-frontend:${{ github.sha }}
+
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: infrastructure/terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: infrastructure/terraform
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        working-directory: infrastructure/terraform

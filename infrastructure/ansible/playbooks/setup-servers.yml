@@ -1,0 +1,188 @@
+---
+- name: Setup servers for supplement reminder application
+  hosts: all
+  become: true
+  vars:
+    docker_version: "20.10.14"
+    node_version: "14.x"
+    nginx_version: "1.18.0"
+    domain_name: "example.com"
+    admin_email: "admin@example.com"
+
+  tasks:
+    - name: Update and upgrade apt packages
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 3600
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Set up and configure EC2 instances to host the Node.js application servers
+
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+          - virtualenv
+          - python3-setuptools
+          - unattended-upgrades
+        state: present
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Install necessary packages for running the application and its dependencies
+
+    - name: Configure unattended-upgrades
+      template:
+        src: templates/20auto-upgrades.j2
+        dest: /etc/apt/apt.conf.d/20auto-upgrades
+        mode: '0644'
+      # Requirement: Security Implementation
+      # Location: 8. SECURITY CONSIDERATIONS/8.3 SECURITY PROTOCOLS
+      # Description: Enable automatic security updates
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Add Docker repository key for installation
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Add Docker repository for installation
+
+    - name: Install Docker
+      apt:
+        name: "docker-ce={{ docker_version }}*"
+        state: present
+      notify: Restart Docker
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Install Docker for containerization of the application
+
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+        checksum: sha256:f3f10cf3dbb8107e9ba2ea5f23c1d2159ff7321d16f0a23051d68d8e2547b323
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Install Docker Compose for managing multi-container Docker applications
+
+    - name: Install Node.js
+      shell: |
+        curl -sL https://deb.nodesource.com/setup_{{ node_version }} | sudo -E bash -
+        apt-get install -y nodejs
+      args:
+        warn: false
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Install Node.js for running the backend application
+
+    - name: Install Nginx
+      apt:
+        name: "nginx={{ nginx_version }}*"
+        state: present
+      notify: Restart Nginx
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Install Nginx as a reverse proxy and for serving static files
+
+    - name: Copy Nginx configuration
+      template:
+        src: templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        mode: '0644'
+      notify: Reload Nginx
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Configure Nginx for the application
+
+    - name: Enable and start Nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes
+      # Requirement: Server Configuration
+      # Location: 9. INFRASTRUCTURE/9.2 CLOUD SERVICES
+      # Description: Ensure Nginx is running and starts on boot
+
+    - name: Configure firewall
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - "22"
+        - "80"
+        - "443"
+      # Requirement: Security Implementation
+      # Location: 8. SECURITY CONSIDERATIONS/8.3 SECURITY PROTOCOLS
+      # Description: Configure firewall to allow necessary incoming traffic
+
+    - name: Install Certbot
+      apt:
+        name: certbot
+        state: present
+      # Requirement: Security Implementation
+      # Location: 8. SECURITY CONSIDERATIONS/8.3 SECURITY PROTOCOLS
+      # Description: Install Certbot for obtaining SSL certificates
+
+    - name: Obtain SSL certificate
+      command: >
+        certbot --nginx 
+        -d {{ domain_name }} -d www.{{ domain_name }} 
+        --non-interactive --agree-tos 
+        --email {{ admin_email }}
+        --rsa-key-size 4096
+        --redirect
+      args:
+        creates: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem
+      notify: Reload Nginx
+      # Requirement: Security Implementation
+      # Location: 8. SECURITY CONSIDERATIONS/8.3 SECURITY PROTOCOLS
+      # Description: Obtain and install SSL certificate for HTTPS enforcement
+
+    - name: Set up Certbot auto-renewal
+      cron:
+        name: "Certbot Renewal"
+        minute: "0"
+        hour: "3"
+        weekday: "1"
+        job: "/usr/bin/certbot renew --quiet --deploy-hook 'systemctl reload nginx'"
+      # Requirement: Security Implementation
+      # Location: 8. SECURITY CONSIDERATIONS/8.3 SECURITY PROTOCOLS
+      # Description: Automatically renew SSL certificates
+
+  handlers:
+    - name: Restart Nginx
+      systemd:
+        name: nginx
+        state: restarted
+
+    - name: Reload Nginx
+      systemd:
+        name: nginx
+        state: reloaded
+
+    - name: Restart Docker
+      systemd:
+        name: docker
+        state: restarted
+
+# This playbook sets up and configures servers for the supplement reminder application
+# It installs and configures Docker, Node.js, Nginx, and other required packages
+# Security measures such as firewall configuration, SSL certificate installation, and automatic updates are implemented
+# Make sure to update the variables and configurations according to your specific requirements
+# This playbook should be run before deploying the application using deploy-app.yml
+
+# Ansible version: >=2.9

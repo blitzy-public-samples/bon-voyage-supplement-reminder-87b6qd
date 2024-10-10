@@ -1,0 +1,64 @@
+{
+  "short_name": "Supplement Reminder",
+  "name": "Supplement Reminder App",
+  "description": "An application to help users remember to take their supplements on time",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#000080",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "categories": ["health", "lifestyle"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "iarc_rating_id": "",
+  "screenshots": [
+    {
+      "src": "screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "1280x720",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Reminder",
+      "short_name": "Add",
+      "description": "Add a new supplement reminder",
+      "url": "/add-reminder",
+      "icons": [{ "src": "add-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "View Reminders",
+      "short_name": "View",
+      "description": "View all your supplement reminders",
+      "url": "/view-reminders",
+      "icons": [{ "src": "view-icon.png", "sizes": "192x192" }]
+    }
+  ]
+}

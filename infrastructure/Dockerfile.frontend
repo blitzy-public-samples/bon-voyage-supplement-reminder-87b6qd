@@ -1,0 +1,52 @@
+# Stage 1: Build the React application
+FROM node:18-alpine AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY src/frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci --quiet
+
+# Copy source code
+COPY src/frontend/ ./
+
+# Build the React application
+RUN npm run build
+
+# Remove development dependencies
+RUN npm prune --production
+
+# Stage 2: Serve the built React application using Nginx
+FROM nginx:alpine
+
+# Install curl for healthchecks
+RUN apk add --no-cache curl
+
+# Copy built files from the build stage
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Copy Nginx configuration
+COPY infrastructure/nginx.conf /etc/nginx/nginx.conf
+
+# Create a non-root user to run Nginx
+RUN adduser -D -H -u 1000 -s /sbin/nologin www-data
+
+# Set proper permissions
+RUN chown -R www-data:www-data /usr/share/nginx/html /var/cache/nginx /var/log/nginx /etc/nginx/conf.d
+RUN touch /var/run/nginx.pid && chown www-data:www-data /var/run/nginx.pid
+
+# Switch to non-root user
+USER www-data
+
+# Expose port 80
+EXPOSE 80
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/ || exit 1
+
+# Start Nginx server
+CMD ["nginx", "-g", "daemon off;"]

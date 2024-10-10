@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: supplement-reminder-backend:${APP_VERSION:-latest}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=3000
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-supplement_reminder}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+      - SMS_API_KEY=${SMS_API_KEY}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  db:
+    image: postgres:13-alpine
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME:-supplement_reminder}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  app-network:
+    driver: bridge
+
+# This Docker Compose configuration addresses the following requirements:
+# - Containerization (9. INFRASTRUCTURE/9.3 CONTAINERIZATION): 
+#   The application is containerized using Docker to ensure consistency across environments.
+# - Data Storage and Management (2. TECHNICAL REQUIREMENTS/2.4 Data Storage and Management): 
+#   A PostgreSQL database is set up with appropriate configuration for user data and reminder schedules.
+# - Performance Optimization (2. TECHNICAL REQUIREMENTS/2.8 Performance Optimization): 
+#   Redis is implemented for server-side caching to reduce database load.
+# - Security (2. TECHNICAL REQUIREMENTS/2.6 Security):
+#   Environment variables are used for sensitive information, and the app runs as a non-root user.
+# - Scalability and High Availability (2. TECHNICAL REQUIREMENTS/2.7 Scalability and High Availability):
+#   Services are configured with restart policies and healthchecks for improved reliability.
+# - Monitoring and Logging (2. TECHNICAL REQUIREMENTS/2.9 Monitoring and Logging):
+#   Healthchecks are implemented for all services to facilitate monitoring.
+
+# Note: Ensure that you create a .env file in the same directory as this docker-compose.yml
+# with the following variables set:
+# APP_VERSION=1.0.0
+# NODE_ENV=production
+# APP_PORT=3000
+# DB_NAME=supplement_reminder
+# DB_USER=your_secure_db_user
+# DB_PASSWORD=your_very_secure_password
+# DB_PORT=5432
+# REDIS_PORT=6379
+# JWT_SECRET=your_jwt_secret
+# SMS_API_KEY=your_sms_api_key
